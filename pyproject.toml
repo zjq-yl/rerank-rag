@@ -1,0 +1,22 @@
+[project]
+name = "rerank-rag"
+version = "0.1.0"
+description = "对比普通 RAG 与重排 RAG 的本地检索示例"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "chromadb",
+    "openai",
+    "python-docx>=1.2.0",
+    "python-dotenv",
+    "requests",
+    "sentence-transformers",
+    "torch",
+]
+
+[project.scripts]
+rerank-rag = "rerank_rag.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
