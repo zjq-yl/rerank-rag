@@ -73,6 +73,10 @@ def main() -> None:
         help="保留已有集合中的 Chunk",
     )
 
+    web_parser = subparsers.add_parser("web", help="启动本地网页界面")
+    web_parser.add_argument("--host", default="127.0.0.1", help="监听地址，默认 127.0.0.1")
+    web_parser.add_argument("--port", type=int, default=8765, help="监听端口，默认 8765")
+
     ask_parser = subparsers.add_parser("ask", help="使用向量检索结果回答问题")
     rerank_parser = subparsers.add_parser(
         "ask-rerank", help="向量召回后重排，再回答问题"
@@ -111,6 +115,12 @@ def main() -> None:
         )
         print(f"索引完成：{count} 个 Chunk")
         print(f"Chroma 目录：{CHROMA_DIR}")
+        return
+
+    if args.command == "web":
+        from rerank_rag.web import serve
+
+        serve(args.host, args.port)
         return
 
     if args.command == "ask":

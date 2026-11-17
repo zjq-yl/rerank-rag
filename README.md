@@ -23,7 +23,9 @@ rerank-rag/
 │       ├── embedding.py
 │       ├── vector_store.py
 │       ├── rerank.py
-│       └── generation.py
+│       ├── generation.py
+│       ├── web.py
+│       └── static/         # 本地网页 HTML、CSS、JavaScript
 ├── data/                  # 本地知识库，不提交到 Git
 ├── models/                # 自行下载模型，不提交
 ├── chroma_db/             # 运行时索引，不提交
@@ -79,6 +81,16 @@ uv run rerank-rag index
 ```
 
 这会在 `chroma_db/` 建立或重建索引。修改文档、切块参数或 Embedding 模型后，应重新运行。`index --keep-existing` 会保留集合已有 Chunk，仅在明确需要增量写入时使用。
+
+## 本地网页
+
+建立索引后，在仓库根目录启动网页：
+
+```powershell
+uv run rerank-rag web
+```
+
+浏览器访问 `http://127.0.0.1:8765`。在网页中输入问题，可选择是否启用重排或仅查看检索片段。生成回答需要配置 `OPENAI_API_KEY`；仅检索不需要聊天模型 API Key。停止服务可在终端按 `Ctrl+C`。默认只监听本机；如果端口被占用，可用 `uv run rerank-rag web --port 8766` 更换。
 
 ## 检索文档
 
