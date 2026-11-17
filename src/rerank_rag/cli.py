@@ -56,7 +56,7 @@ def build_index(reset: bool = True) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="普通 RAG 与重排 RAG 对比",
+        description="本地文档 RAG 问答",
     )
     subparsers = parser.add_subparsers(
         dest="command",
@@ -73,9 +73,9 @@ def main() -> None:
         help="保留已有集合中的 Chunk",
     )
 
-    ask_parser = subparsers.add_parser("ask", help="普通 RAG：直接使用向量检索结果")
+    ask_parser = subparsers.add_parser("ask", help="使用向量检索结果回答问题")
     rerank_parser = subparsers.add_parser(
-        "ask-rerank", help="重排 RAG：向量召回后进行交叉编码器重排"
+        "ask-rerank", help="向量召回后重排，再回答问题"
     )
     for query_parser in (ask_parser, rerank_parser):
         query_parser.add_argument("question", help="要查询的问题")
@@ -115,12 +115,12 @@ def main() -> None:
 
     if args.command == "ask":
         hits = retrieve(args.question, top_k=args.top_k)
-        print(f"\n普通 RAG：向量检索返回 {len(hits)} 个结果")
+        print(f"\n向量检索返回 {len(hits)} 个结果")
     else:
         candidates = retrieve(args.question, top_k=args.candidate_k)
         hits = rerank_hits(args.question, candidates, top_n=args.rerank_top_n)
         print(
-            f"\n重排 RAG：向量召回 {len(candidates)} 个候选，重排后保留 {len(hits)} 个结果"
+            f"\n向量召回 {len(candidates)} 个候选，重排后保留 {len(hits)} 个结果"
         )
 
     for number, hit in enumerate(hits, start=1):

@@ -1,11 +1,11 @@
-# 普通 RAG 与重排 RAG 对比
+# 本地文档 RAG 问答
 
-本项目使用同一份文档和 Chroma 向量索引，对比两条问答链路：
+本项目从本地文档构建 Chroma 向量索引，根据问题检索相关内容，并调用聊天模型生成带来源引用的回答。支持两种查询方式：
 
-- **普通 RAG**：问题 → BGE 向量检索 Top-K → 生成回答。
-- **重排 RAG**：问题 → BGE 向量召回候选 → BGE Reranker 重排 Top-N → 生成回答。
+- `ask`：直接使用 BGE 向量检索结果生成回答。
+- `ask-rerank`：先召回候选片段，再用 BGE Reranker 排序后生成回答。
 
-默认普通 RAG 直接取 5 条；重排 RAG 先召回 20 条，再取 5 条。两条链路共用切块、Embedding、向量库和生成模型。
+两种查询方式共用文档、切块、Embedding、向量库和生成模型。默认直接检索返回 5 条；启用重排时先召回 20 条候选，再保留 5 条。
 
 ## 目录结构
 
@@ -24,9 +24,7 @@ rerank-rag/
 │       ├── vector_store.py
 │       ├── rerank.py
 │       └── generation.py
-├── data/                  # .txt、.md、.docx、.pdf 知识库
-│   ├── demo.txt
-│   └── faq.md
+├── data/                  # 本地知识库，不提交到 Git
 ├── models/                # 自行下载模型，不提交
 ├── chroma_db/             # 运行时索引，不提交
 ├── .cache/mineru/         # PDF 解析缓存，不提交
@@ -60,7 +58,7 @@ Python 包之外，还需自行下载模型权重，将 `BAAI/bge-base-zh-v1.5` 
 Copy-Item .env.example .env
 ```
 
-生成答案需要填写 `.env` 中的 `OPENAI_API_KEY`；使用兼容 OpenAI API 的服务时，可填写 `OPENAI_BASE_URL` 和 `OPENAI_CHAT_MODEL`。只用 `--retrieval-only` 比较检索时不需要聊天模型 API Key。模型放在其他路径时，设置 `LOCAL_EMBED_MODEL_PATH`、`LOCAL_RERANK_MODEL_PATH`。
+生成答案需要填写 `.env` 中的 `OPENAI_API_KEY`；使用兼容 OpenAI API 的服务时，可填写 `OPENAI_BASE_URL` 和 `OPENAI_CHAT_MODEL`。只查看检索结果时可以使用 `--retrieval-only`，此时不需要聊天模型 API Key。模型放在其他路径时，设置 `LOCAL_EMBED_MODEL_PATH`、`LOCAL_RERANK_MODEL_PATH`。
 
 ## 文档格式与 MinerU
 
@@ -72,7 +70,7 @@ PDF 解析结果按文件内容缓存于 `.cache/mineru/`。文件未变化时�
 
 ## 建立索引
 
-把 `.txt`、`.md`、`.docx` 或 `.pdf` 文档放进 `data/`，然后运行：
+先在仓库根目录创建 `data/`，把 `.txt`、`.md`、`.docx` 或 `.pdf` 文档放进去，然后运行。`data/` 已被 Git 忽略，克隆仓库后需自行准备文档：
 
 ```powershell
 uv run rerank-rag index
@@ -80,27 +78,27 @@ uv run rerank-rag index
 
 这会在 `chroma_db/` 建立或重建索引。修改文档、切块参数或 Embedding 模型后，应重新运行。`index --keep-existing` 会保留集合已有 Chunk，仅在明确需要增量写入时使用。
 
-## 对比检索结果
+## 检索文档
 
-两条命令使用同一个问题和同一个索引，最终均保留最多 5 条。`--retrieval-only` 会打印排序、来源、分数及文本片段，不调用聊天模型：
-
-```powershell
-# 普通 RAG：直接取向量检索前 5 条，不做重排
-uv run rerank-rag ask "为什么更换 Embedding 模型后需要重建索引？" --top-k 5 --retrieval-only
-
-# 重排 RAG：召回前 20 条候选，再选前 5 条
-uv run rerank-rag ask-rerank "为什么更换 Embedding 模型后需要重建索引？" --candidate-k 20 --rerank-top-n 5 --retrieval-only
-```
-
-比较 Chunk ID、顺序和片段内容即可看出差异。`vector_score` 为 `1 - Chroma cosine distance`；`rerank_score` 是重排模型原始分数，两个分数不能直接比较数值。索引不足 20 条时，实际候选数会更少。
-
-## 对比最终回答
-
-配置 API Key 后，去掉 `--retrieval-only`，即可分别生成答案：
+`--retrieval-only` 会打印命中的片段、来源和分数，不调用聊天模型。把示例问题换成与你放入 `data/` 的文档相关的问题：
 
 ```powershell
-uv run rerank-rag ask "为什么更换 Embedding 模型后需要重建索引？" --top-k 5
-uv run rerank-rag ask-rerank "为什么更换 Embedding 模型后需要重建索引？" --candidate-k 20 --rerank-top-n 5
+# 直接使用向量检索结果
+uv run rerank-rag ask "你的问题" --top-k 5 --retrieval-only
+
+# 召回候选后重排
+uv run rerank-rag ask-rerank "你的问题" --candidate-k 20 --rerank-top-n 5 --retrieval-only
 ```
 
-这会发起两次聊天模型请求，可能产生 API 费用。公平对比时保持问题、文档、索引、Embedding 模型和最终结果数一致。示例文档较少时，两条链路的结果可能相同。
+`vector_score` 为 `1 - Chroma cosine distance`；`rerank_score` 是重排模型原始分数，两者不能直接比较数值。索引不足 20 条时，实际候选数会更少。
+
+## 生成回答
+
+配置聊天模型 API Key 后，直接提问即可生成回答：
+
+```powershell
+uv run rerank-rag ask "你的问题" --top-k 5
+uv run rerank-rag ask-rerank "你的问题" --candidate-k 20 --rerank-top-n 5
+```
+
+每次生成回答都会调用聊天模型，可能产生 API 费用。

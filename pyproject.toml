@@ -1,7 +1,7 @@
 [project]
 name = "rerank-rag"
 version = "0.1.0"
-description = "对比普通 RAG 与重排 RAG 的本地检索示例"
+description = "支持向量检索与可选重排的本地文档 RAG 问答项目"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
