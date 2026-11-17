@@ -5,30 +5,20 @@ from rerank_rag.config import (
     CHUNK_SIZE,
     DATA_DIR,
 )
-from rerank_rag.mineru import parse_pdf
+from rerank_rag.mineru import parse_document
 
 
-def _read_docx(path: Path) -> str:
-    """Read paragraphs and tables in their document order."""
-    from docx import Document
-    from docx.table import Table
-
-    parts: list[str] = []
-    for block in Document(path).iter_inner_content():
-        if isinstance(block, Table):
-            for row in block.rows:
-                cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
-                if any(cells):
-                    parts.append(" | ".join(cells))
-        elif block.text.strip():
-            parts.append(block.text.strip())
-    return "\n".join(parts)
+DOCLING_SUFFIXES = {
+    ".docx", ".xlsx", ".ppt", ".pptx", ".html", ".htm", ".csv",
+    ".epub", ".odt", ".ods", ".odp",
+}
+PRESENTATION_SUFFIXES = {".ppt", ".pptx"}
 
 
 def load_documents(data_dir: Path = DATA_DIR) -> list[dict]:
-    """读取 data 目录下的 txt、md、docx 和 pdf 文件。"""
+    """读取 data 目录中的文本、PDF 和 Docling 支持的文档。"""
     root = Path(data_dir).resolve()
-    suffixes = {".txt", ".md", ".docx", ".pdf"}
+    suffixes = {".txt", ".md", ".pdf"} | DOCLING_SUFFIXES
 
     files = sorted(
         path
@@ -36,14 +26,32 @@ def load_documents(data_dir: Path = DATA_DIR) -> list[dict]:
         if path.is_file() and path.suffix.lower() in suffixes
     )
     if not files:
-        raise FileNotFoundError(f"没有在 {root} 中找到 txt、md、docx 或 pdf 文件")
+        raise FileNotFoundError(f"在 {root} 中没有找到支持的文档")
 
     documents = []
+    converter = None
     for path in files:
-        if path.suffix.lower() == ".docx":
-            text = _read_docx(path)
-        elif path.suffix.lower() == ".pdf":
-            text = parse_pdf(path)
+        if path.suffix.lower() == ".pdf":
+            text = parse_document(path)
+        elif path.suffix.lower() in DOCLING_SUFFIXES:
+            try:
+                if converter is None:
+                    from docling.document_converter import DocumentConverter
+
+                    converter = DocumentConverter()
+                text = converter.convert(path).document.export_to_markdown()
+                if path.suffix.lower() in PRESENTATION_SUFFIXES and not text.strip():
+                    raise ValueError("Docling 未提取到文字")
+            except Exception as exc:
+                if path.suffix.lower() not in PRESENTATION_SUFFIXES:
+                    raise
+                try:
+                    text = parse_document(path)
+                except Exception as fallback_exc:
+                    raise RuntimeError(
+                        f"{path.name} 的 Docling 和 MinerU 解析均失败；"
+                        f"Docling: {exc}；MinerU: {fallback_exc}"
+                    ) from fallback_exc
         else:
             text = path.read_text(encoding="utf-8")
 

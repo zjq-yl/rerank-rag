@@ -1,4 +1,4 @@
-"""Use MinerU's hosted precision API to turn a local PDF into Markdown."""
+"""Use MinerU's hosted precision API to turn a local document into Markdown."""
 
 from __future__ import annotations
 
@@ -19,11 +19,11 @@ POLL_TIMEOUT_SECONDS = 300
 MODEL_VERSION = "vlm"
 
 
-def _pdf_hash(path: Path) -> str:
+def _document_hash(path: Path) -> str:
     digest = hashlib.sha256()
     digest.update(MODEL_VERSION.encode("ascii"))
-    with path.open("rb") as pdf:
-        for block in iter(lambda: pdf.read(1024 * 1024), b""):
+    with path.open("rb") as document:
+        for block in iter(lambda: document.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
 
@@ -36,15 +36,15 @@ def _api_data(response: requests.Response) -> dict:
     return payload["data"]
 
 
-def parse_pdf(path: Path) -> str:
-    """Parse a PDF through MinerU and cache the successful Markdown result."""
-    cache_path = PROJECT_ROOT / ".cache" / "mineru" / f"{_pdf_hash(path)}.md"
+def parse_document(path: Path) -> str:
+    """Parse a PDF or presentation through MinerU and cache the Markdown result."""
+    cache_path = PROJECT_ROOT / ".cache" / "mineru" / f"{_document_hash(path)}.md"
     if cache_path.is_file():
         return cache_path.read_text(encoding="utf-8")
 
     api_key = os.getenv("MINERU_API_KEY")
     if not api_key:
-        raise RuntimeError("解析 PDF 需要在根目录 .env 中配置 MINERU_API_KEY")
+        raise RuntimeError("MinerU 解析需要在根目录 .env 中配置 MINERU_API_KEY")
 
     headers = {"Authorization": f"Bearer {api_key}"}
     task = _api_data(
@@ -58,13 +58,13 @@ def parse_pdf(path: Path) -> str:
     batch_id = task["batch_id"]
     upload_urls = task["file_urls"]
     if len(upload_urls) != 1:
-        raise RuntimeError("MinerU 未返回唯一的 PDF 上传地址")
+        raise RuntimeError("MinerU 未返回唯一的文档上传地址")
 
     # The signed upload URL belongs to object storage: do not send the API token.
-    with path.open("rb") as pdf:
-        upload = requests.put(upload_urls[0], data=pdf, timeout=180)
+    with path.open("rb") as document:
+        upload = requests.put(upload_urls[0], data=document, timeout=180)
     if upload.status_code not in (200, 201):
-        raise RuntimeError(f"MinerU PDF 上传失败：HTTP {upload.status_code}")
+        raise RuntimeError(f"MinerU 文档上传失败：HTTP {upload.status_code}")
 
     deadline = time.monotonic() + POLL_TIMEOUT_SECONDS
     while time.monotonic() < deadline:

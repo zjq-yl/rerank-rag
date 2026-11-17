@@ -39,7 +39,7 @@ rerank-rag/
 
 ## 用 uv 安装依赖
 
-需要 `uv` 和 Python 3.13 或更新版本。`pyproject.toml` 已列出直接依赖，包括 `chromadb`、`sentence-transformers`、`torch`、`openai`、`python-dotenv`、`python-docx` 和 `requests`。
+需要 `uv` 和 Python 3.13 或更新版本。`pyproject.toml` 已列出直接依赖，包括 `chromadb`、`sentence-transformers`、`torch`、`openai`、`python-dotenv`、`docling` 和 `requests`。
 
 在仓库根目录运行：
 
@@ -60,17 +60,19 @@ Copy-Item .env.example .env
 
 生成答案需要填写 `.env` 中的 `OPENAI_API_KEY`；使用兼容 OpenAI API 的服务时，可填写 `OPENAI_BASE_URL` 和 `OPENAI_CHAT_MODEL`。只查看检索结果时可以使用 `--retrieval-only`，此时不需要聊天模型 API Key。模型放在其他路径时，设置 `LOCAL_EMBED_MODEL_PATH`、`LOCAL_RERANK_MODEL_PATH`。
 
-## 文档格式与 MinerU
+## 支持的文档格式
 
 - `.txt`、`.md`：本地按 UTF-8 读取。
-- `.docx`：使用 `python-docx` 在本地提取正文段落和表格文字，按文档顺序写入索引；图片中的文字不会被 OCR。
-- `.pdf`：上传到 MinerU 官方在线 API，取得解析后的 Markdown，再写入索引。首次处理 PDF 前，把 MinerU Token 填入根目录 `.env` 的 `MINERU_API_KEY`。PDF 内容会发送给 MinerU，解析可能耗时并消耗账户额度。
+- `.docx`（Word）、`.xlsx`（Excel）：使用 Docling 在本地解析并导出 Markdown。
+- `.pptx`、`.ppt`（PowerPoint）：先使用 Docling；如果解析失败或没有提取到文字，再将原文件交给 MinerU。Docling 处理旧版 `.ppt` 通常需要 LibreOffice，备用解析需要配置 `MINERU_API_KEY`。
+- `.html`、`.htm`、`.csv`、`.epub`、`.odt`、`.ods`、`.odp`：同样由 Docling 在本地解析。
+- `.pdf`：继续上传到 MinerU 官方在线 API，取得解析后的 Markdown。首次处理 PDF 前，把 MinerU Token 填入根目录 `.env` 的 `MINERU_API_KEY`。PDF 内容会发送给 MinerU，解析可能耗时并消耗账户额度。
 
-PDF 解析结果按文件内容缓存于 `.cache/mineru/`。文件未变化时，重建索引会复用缓存；修改 PDF 后会重新解析。若想强制重新解析全部 PDF，可清空 `.cache/mineru/` 后再次运行 `index`。当前只从 DOCX 提取正文和表格；复杂版式或扫描件建议转为 PDF 后走 MinerU。
+MinerU 的 PDF/PPT 解析结果按文件内容缓存于 `.cache/mineru/`。文件未变化时，重建索引会复用缓存；文件修改后会重新解析。若想强制重新解析全部缓存文档，可清空 `.cache/mineru/` 后再次运行 `index`。旧版 `.doc`、`.xls` 不在当前支持列表中，可先转成 `.docx`、`.xlsx`。Docling 能保留更多文档结构，但检索质量仍受文档内容和切块方式影响。
 
 ## 建立索引
 
-先在仓库根目录创建 `data/`，把 `.txt`、`.md`、`.docx` 或 `.pdf` 文档放进去，然后运行。`data/` 已被 Git 忽略，克隆仓库后需自行准备文档：
+先在仓库根目录创建 `data/`，把上述格式的文档放进去，然后运行。`data/` 已被 Git 忽略，克隆仓库后需自行准备文档：
 
 ```powershell
 uv run rerank-rag index
