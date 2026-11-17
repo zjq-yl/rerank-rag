@@ -8,7 +8,6 @@ from sentence_transformers import SentenceTransformer
 _embedding_model: SentenceTransformer | None = None
 
 
-
 def embed_chunks(
     chunks: list[dict],
     is_query: bool = False,
@@ -34,10 +33,7 @@ def embed_chunks(
     texts = [chunk["text"] for chunk in chunks]
 
     if is_query:
-        texts = [
-            BGE_QUERY_PREFIX + text
-            for text in texts
-        ]
+        texts = [BGE_QUERY_PREFIX + text for text in texts]
 
     embeddings = _embedding_model.encode(
         texts,
@@ -48,6 +44,5 @@ def embed_chunks(
     )
 
     return {
-        chunk["id"]: embedding.tolist()
-        for chunk, embedding in zip(chunks, embeddings)
+        chunk["id"]: embedding.tolist() for chunk, embedding in zip(chunks, embeddings)
     }

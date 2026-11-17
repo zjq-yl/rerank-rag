@@ -80,7 +80,9 @@ def parse_pdf(path: Path) -> str:
             item = items[0]
             state = item.get("state")
             if state == "failed":
-                raise RuntimeError(f"MinerU 解析 {path.name} 失败：{item.get('err_msg', '未知错误')}")
+                raise RuntimeError(
+                    f"MinerU 解析 {path.name} 失败：{item.get('err_msg', '未知错误')}"
+                )
             if state == "done":
                 zip_url = item.get("full_zip_url")
                 if not zip_url:
@@ -88,7 +90,11 @@ def parse_pdf(path: Path) -> str:
                 archive_response = requests.get(zip_url, timeout=180)
                 archive_response.raise_for_status()
                 with zipfile.ZipFile(io.BytesIO(archive_response.content)) as archive:
-                    markdown_files = [name for name in archive.namelist() if Path(name).name == "full.md"]
+                    markdown_files = [
+                        name
+                        for name in archive.namelist()
+                        if Path(name).name == "full.md"
+                    ]
                     if not markdown_files:
                         raise RuntimeError("MinerU 结果 ZIP 中没有 full.md")
                     text = archive.read(markdown_files[0]).decode("utf-8")

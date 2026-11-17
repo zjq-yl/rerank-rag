@@ -9,6 +9,7 @@ from rerank_rag.config import (
 )
 from sentence_transformers import CrossEncoder
 import torch
+
 _reranker: CrossEncoder | None = None
 
 
@@ -18,13 +19,11 @@ def get_reranker() -> CrossEncoder:
 
     if _reranker is None:
         if not RERANK_MODEL_PATH.is_dir():
-            raise FileNotFoundError(
-                f"本地 Rerank 模型不存在：{RERANK_MODEL_PATH}"
-            )
+            raise FileNotFoundError(f"本地 Rerank 模型不存在：{RERANK_MODEL_PATH}")
 
         _reranker = CrossEncoder(
             str(RERANK_MODEL_PATH),
-            device = "cuda" if torch.cuda.is_available() else "cpu",
+            device="cuda" if torch.cuda.is_available() else "cpu",
             local_files_only=True,
         )
 
@@ -46,10 +45,7 @@ def rerank_hits(
     if not candidates:
         return []
 
-    pairs = [
-        (question, candidate["text"])
-        for candidate in candidates
-    ]
+    pairs = [(question, candidate["text"]) for candidate in candidates]
 
     scores = get_reranker().predict(
         pairs,

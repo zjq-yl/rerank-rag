@@ -1,6 +1,7 @@
 import os
 from openai import OpenAI
 
+
 def generate_answer(question: str, hits: list[dict]) -> str:
     """根据检索结果调用生成模型，返回最终回答。"""
     if not question.strip():
@@ -24,9 +25,7 @@ def generate_answer(question: str, hits: list[dict]) -> str:
         client = OpenAI(api_key=api_key)
 
     context = "\n\n".join(
-        f"[{number}] 来源：{hit['source']}，"
-        f"Chunk ID：{hit['id']}\n"
-        f"{hit['text']}"
+        f"[{number}] 来源：{hit['source']}，Chunk ID：{hit['id']}\n{hit['text']}"
         for number, hit in enumerate(hits, start=1)
     )
 

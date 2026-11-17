@@ -25,12 +25,12 @@ def _read_docx(path: Path) -> str:
     return "\n".join(parts)
 
 
-def load_documents(data_dir:Path=DATA_DIR) -> list[dict]:
+def load_documents(data_dir: Path = DATA_DIR) -> list[dict]:
     """读取 data 目录下的 txt、md、docx 和 pdf 文件。"""
-    root=Path(data_dir).resolve()
-    suffixes={".txt", ".md", ".docx", ".pdf"}
+    root = Path(data_dir).resolve()
+    suffixes = {".txt", ".md", ".docx", ".pdf"}
 
-    files=sorted(
+    files = sorted(
         path
         for path in root.rglob("*")
         if path.is_file() and path.suffix.lower() in suffixes
@@ -38,7 +38,7 @@ def load_documents(data_dir:Path=DATA_DIR) -> list[dict]:
     if not files:
         raise FileNotFoundError(f"没有在 {root} 中找到 txt、md、docx 或 pdf 文件")
 
-    documents=[]
+    documents = []
     for path in files:
         if path.suffix.lower() == ".docx":
             text = _read_docx(path)
@@ -51,50 +51,48 @@ def load_documents(data_dir:Path=DATA_DIR) -> list[dict]:
             continue
         documents.append(
             {
-                "source":path.relative_to(root).as_posix(),
-                "text":text,
+                "source": path.relative_to(root).as_posix(),
+                "text": text,
             }
         )
     if not documents:
         raise RuntimeError("找到了文档，但是文档内容为空")
     return documents
 
+
 def split_text(
-        text:str,
-        chunk_size:int=CHUNK_SIZE,
-        overlap:int=CHUNK_OVERLAP,
-)-> list[str]:
+    text: str,
+    chunk_size: int = CHUNK_SIZE,
+    overlap: int = CHUNK_OVERLAP,
+) -> list[str]:
     """把长文本切成带有重叠的固定长度文本块。"""
-    if chunk_size<=0:
+    if chunk_size <= 0:
         raise ValueError("chunk_size必须大于0")
     if overlap < 0 or overlap >= chunk_size:
         raise ValueError("overlap必须满足0 <= overlap < chunk_size")
 
-    cleaned="\n".join(
-        line.strip()
-        for line in text.splitlines()
-        if line.strip()
-    )
-    chunks=[]
-    start=0
+    cleaned = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    chunks = []
+    start = 0
 
     while start < len(cleaned):
-        end=min(start+chunk_size,len(cleaned))
+        end = min(start + chunk_size, len(cleaned))
         chunk = cleaned[start:end].strip()
 
         if chunk:
             chunks.append(chunk)
-        if end==len(cleaned):
+        if end == len(cleaned):
             break
-        start=end-overlap
+        start = end - overlap
     return chunks
 
-def create_chunks(documents:list[dict])->list[dict]:
+
+def create_chunks(documents: list[dict]) -> list[dict]:
     """为每个文本块增加来源、块编号和唯一 ID。"""
-    chunks=[]
+    chunks = []
     for document in documents:
-        text_chunks=split_text(document["text"])
-        for chunk_index,text in enumerate(text_chunks):
+        text_chunks = split_text(document["text"])
+        for chunk_index, text in enumerate(text_chunks):
             chunks.append(
                 {
                     "id": f"{document['source']}-{chunk_index}",

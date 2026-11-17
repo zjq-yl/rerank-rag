@@ -19,23 +19,20 @@ from rerank_rag.rerank import rerank_hits
 from rerank_rag.vector_store import retrieve
 
 
-def build_index(reset:bool=True) -> int:
+def build_index(reset: bool = True) -> int:
     """离线建库：Chunks → 本地 BGE 向量 → Chroma。"""
-    documents=load_documents()
-    chunks=create_chunks(documents)
-    chunk_vectors=embed_chunks(chunks)
-    client=chromadb.PersistentClient(path=str(CHROMA_DIR))
-    existing_names = {
-        collection.name
-        for collection in client.list_collections()
-    }
+    documents = load_documents()
+    chunks = create_chunks(documents)
+    chunk_vectors = embed_chunks(chunks)
+    client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+    existing_names = {collection.name for collection in client.list_collections()}
 
     if reset and COLLECTION_NAME in existing_names:
         client.delete_collection(COLLECTION_NAME)
 
-    collection=client.get_or_create_collection(
+    collection = client.get_or_create_collection(
         name=COLLECTION_NAME,
-        metadata={"hnsw:space":"cosine"},
+        metadata={"hnsw:space": "cosine"},
     )
 
     for start in range(0, len(chunks), EMBED_BATCH_SIZE):
@@ -44,10 +41,7 @@ def build_index(reset:bool=True) -> int:
         collection.upsert(
             ids=[chunk["id"] for chunk in batch],
             documents=[chunk["text"] for chunk in batch],
-            embeddings=[
-                chunk_vectors[chunk["id"]]
-                for chunk in batch
-            ],
+            embeddings=[chunk_vectors[chunk["id"]] for chunk in batch],
             metadatas=[
                 {
                     "source": chunk["source"],
@@ -58,6 +52,7 @@ def build_index(reset:bool=True) -> int:
         )
 
     return collection.count()
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -90,15 +85,21 @@ def main() -> None:
             help="只显示检索结果，不调用生成模型",
         )
     ask_parser.add_argument(
-        "--top-k", type=int, default=RERANK_TOP_N,
+        "--top-k",
+        type=int,
+        default=RERANK_TOP_N,
         help=f"直接用于回答的向量检索结果数，默认 {RERANK_TOP_N}",
     )
     rerank_parser.add_argument(
-        "--candidate-k", type=int, default=RERANK_CANDIDATE_K,
+        "--candidate-k",
+        type=int,
+        default=RERANK_CANDIDATE_K,
         help=f"向量召回候选数，默认 {RERANK_CANDIDATE_K}",
     )
     rerank_parser.add_argument(
-        "--rerank-top-n", type=int, default=RERANK_TOP_N,
+        "--rerank-top-n",
+        type=int,
+        default=RERANK_TOP_N,
         help=f"重排后保留结果数，默认 {RERANK_TOP_N}",
     )
 
@@ -118,7 +119,9 @@ def main() -> None:
     else:
         candidates = retrieve(args.question, top_k=args.candidate_k)
         hits = rerank_hits(args.question, candidates, top_n=args.rerank_top_n)
-        print(f"\n重排 RAG：向量召回 {len(candidates)} 个候选，重排后保留 {len(hits)} 个结果")
+        print(
+            f"\n重排 RAG：向量召回 {len(candidates)} 个候选，重排后保留 {len(hits)} 个结果"
+        )
 
     for number, hit in enumerate(hits, start=1):
         score_text = f"vector_score={hit['score']:.4f}"
@@ -133,6 +136,7 @@ def main() -> None:
     print("\n回答：")
     answer = generate_answer(args.question, hits)
     print(answer)
-    
+
+
 if __name__ == "__main__":
     main()
