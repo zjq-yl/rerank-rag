@@ -5,6 +5,7 @@ from rerank_rag.config import (
     CHUNK_SIZE,
     DATA_DIR,
 )
+from rerank_rag.governance import load_catalog
 from rerank_rag.mineru import parse_document
 
 
@@ -27,10 +28,16 @@ def load_documents(data_dir: Path = DATA_DIR) -> list[dict]:
     )
     if not files:
         raise FileNotFoundError(f"在 {root} 中没有找到支持的文档")
+    if any(not path.resolve().is_relative_to(root) for path in files):
+        raise ValueError("data/ 中的文档不能指向目录外的文件")
+
+    sources = [path.relative_to(root).as_posix() for path in files]
+    catalog = load_catalog(root, sources)
 
     documents = []
     converter = None
     for path in files:
+        source = path.relative_to(root).as_posix()
         if path.suffix.lower() == ".pdf":
             text = parse_document(path)
         elif path.suffix.lower() in DOCLING_SUFFIXES:
@@ -59,8 +66,9 @@ def load_documents(data_dir: Path = DATA_DIR) -> list[dict]:
             continue
         documents.append(
             {
-                "source": path.relative_to(root).as_posix(),
+                "source": source,
                 "text": text,
+                **catalog[source],
             }
         )
     if not documents:

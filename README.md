@@ -32,6 +32,7 @@ rerank-rag/
 ├── .cache/mineru/         # PDF 解析缓存，不提交
 ├── .venv/                 # uv 虚拟环境，不提交
 ├── .env.example           # 配置模板
+├── data-manifest.example.json  # 文档登记模板
 ├── .gitignore
 ├── .python-version
 ├── docs/implementation-plan.md  # 企业版实施清单
@@ -81,7 +82,17 @@ MinerU 的 PDF/PPT 解析结果按文件内容缓存于 `.cache/mineru/`。文�
 
 ## 建立索引
 
-先在仓库根目录创建 `data/`，把上述格式的文档放进去，然后运行。`data/` 已被 Git 忽略，克隆仓库后需自行准备文档：
+先在仓库根目录创建 `data/`，把上述格式的文档放进去。每个文档都要在 `data/manifest.json` 中登记，路径相对于 `data/`；可从模板开始：
+
+```powershell
+Copy-Item data-manifest.example.json data/manifest.json
+```
+
+模板中的 `example.md` 只是示例，需改成实际文件名；子目录使用 `/` 分隔，例如 `policies/leave.docx`。每条记录必须填写唯一的 `document_id`、负责人 `owner`、密级 `classification`（`public`、`internal`、`confidential`、`top_secret`）和布尔值 `approved`。只有人工确认可入库后才把 `approved` 设为 `true`。未登记、登记了不存在的文件、未获批准或绝密文档，都会在**解析任何文件前**终止本次建索引。修改或删除文档时也要同步更新登记文件。
+
+`data/` 和其中的 `manifest.json` 都被 Git 忽略。这里的 `approved` 只是本地人工登记值，目前没有审批工作流或身份校验，不能作为企业正式审批凭据。该检查只对新建索引生效，已有 Chroma 索引不会自动撤回历史片段；清理历史内容需要先核对登记，再运行普通 `index` 重建，不能使用 `--keep-existing`。
+
+登记完成后运行：
 
 ```powershell
 uv run rerank-rag index
