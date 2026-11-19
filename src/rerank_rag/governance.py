@@ -5,6 +5,50 @@ from pathlib import Path
 
 
 CLASSIFICATIONS = {"public", "internal", "confidential", "top_secret"}
+CHUNK_METADATA_FIELDS = (
+    "source", "chunk_index", "document_id", "owner", "classification", "approved"
+)
+
+
+def validated_chunk_metadata(chunk: dict) -> dict:
+    """Return Chroma-compatible metadata, rejecting incomplete or forbidden chunks."""
+    missing = [field for field in CHUNK_METADATA_FIELDS if field not in chunk]
+    if missing:
+        raise ValueError(f"Chunk {chunk.get('id', '<unknown>')} 缺少元数据：{', '.join(missing)}")
+
+    metadata = {field: chunk[field] for field in CHUNK_METADATA_FIELDS}
+    for field in ("source", "document_id", "owner"):
+        if not isinstance(metadata[field], str) or not metadata[field].strip():
+            raise ValueError(f"Chunk {chunk.get('id', '<unknown>')} 的 {field} 无效")
+    if type(metadata["chunk_index"]) is not int or metadata["chunk_index"] < 0:
+        raise ValueError(f"Chunk {chunk.get('id', '<unknown>')} 的 chunk_index 无效")
+    if not isinstance(metadata["classification"], str) or metadata["classification"] not in CLASSIFICATIONS:
+        raise ValueError(f"Chunk {chunk.get('id', '<unknown>')} 的 classification 无效")
+    if metadata["classification"] == "top_secret" or metadata["approved"] is not True:
+        raise PermissionError(f"Chunk {chunk.get('id', '<unknown>')} 未获准入库")
+    return metadata
+CHUNK_METADATA_FIELDS = (
+    "source", "chunk_index", "document_id", "owner", "classification", "approved"
+)
+
+
+def validated_chunk_metadata(chunk: dict) -> dict:
+    """Return Chroma-compatible metadata, rejecting incomplete or forbidden chunks."""
+    missing = [field for field in CHUNK_METADATA_FIELDS if field not in chunk]
+    if missing:
+        raise ValueError(f"Chunk {chunk.get('id', '<unknown>')} 缺少元数据：{', '.join(missing)}")
+
+    metadata = {field: chunk[field] for field in CHUNK_METADATA_FIELDS}
+    for field in ("source", "document_id", "owner"):
+        if not isinstance(metadata[field], str) or not metadata[field].strip():
+            raise ValueError(f"Chunk {chunk.get('id', '<unknown>')} 的 {field} 无效")
+    if type(metadata["chunk_index"]) is not int or metadata["chunk_index"] < 0:
+        raise ValueError(f"Chunk {chunk.get('id', '<unknown>')} 的 chunk_index 无效")
+    if metadata["classification"] not in CLASSIFICATIONS:
+        raise ValueError(f"Chunk {chunk.get('id', '<unknown>')} 的 classification 无效")
+    if metadata["classification"] == "top_secret" or metadata["approved"] is not True:
+        raise PermissionError(f"Chunk {chunk.get('id', '<unknown>')} 未获准入库")
+    return metadata
 
 
 def load_catalog(root: Path, sources: list[str]) -> dict[str, dict]:

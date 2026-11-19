@@ -115,6 +115,10 @@ def create_chunks(documents: list[dict]) -> list[dict]:
                     "source": document["source"],
                     "chunk_index": chunk_index,
                     "text": text,
+                    "document_id": document.get("document_id"),
+                    "owner": document.get("owner"),
+                    "classification": document.get("classification"),
+                    "approved": document.get("approved"),
                 }
             )
     return chunks

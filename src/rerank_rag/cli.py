@@ -15,6 +15,7 @@ from rerank_rag.documents import (
 )
 from rerank_rag.embedding import embed_chunks
 from rerank_rag.generation import generate_answer
+from rerank_rag.governance import validated_chunk_metadata
 from rerank_rag.rerank import rerank_hits
 from rerank_rag.vector_store import retrieve
 
@@ -23,6 +24,7 @@ def build_index(reset: bool = True) -> int:
     """离线建库：Chunks → 本地 BGE 向量 → Chroma。"""
     documents = load_documents()
     chunks = create_chunks(documents)
+    chunk_metadatas = [validated_chunk_metadata(chunk) for chunk in chunks]
     chunk_vectors = embed_chunks(chunks)
     client = chromadb.PersistentClient(path=str(CHROMA_DIR))
     existing_names = {collection.name for collection in client.list_collections()}
@@ -42,13 +44,7 @@ def build_index(reset: bool = True) -> int:
             ids=[chunk["id"] for chunk in batch],
             documents=[chunk["text"] for chunk in batch],
             embeddings=[chunk_vectors[chunk["id"]] for chunk in batch],
-            metadatas=[
-                {
-                    "source": chunk["source"],
-                    "chunk_index": chunk["chunk_index"],
-                }
-                for chunk in batch
-            ],
+            metadatas=chunk_metadatas[start : start + EMBED_BATCH_SIZE],
         )
 
     return collection.count()
