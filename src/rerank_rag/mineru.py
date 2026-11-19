@@ -11,7 +11,7 @@ from pathlib import Path
 
 import requests
 
-from rerank_rag.config import PROJECT_ROOT
+from rerank_rag.config import PROJECT_ROOT, require_opt_in
 
 API_ROOT = "https://mineru.net/api/v4"
 POLL_INTERVAL_SECONDS = 3
@@ -42,6 +42,7 @@ def parse_document(path: Path) -> str:
     if cache_path.is_file():
         return cache_path.read_text(encoding="utf-8")
 
+    require_opt_in("RAG_ALLOW_MINERU_UPLOAD", "向 MinerU 上传文档")
     api_key = os.getenv("MINERU_API_KEY")
     if not api_key:
         raise RuntimeError("MinerU 解析需要在根目录 .env 中配置 MINERU_API_KEY")

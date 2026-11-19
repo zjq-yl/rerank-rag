@@ -1,6 +1,8 @@
 import os
 from openai import OpenAI
 
+from rerank_rag.config import require_opt_in
+
 
 def generate_answer(question: str, hits: list[dict]) -> str:
     """根据检索结果调用生成模型，返回最终回答。"""
@@ -10,6 +12,7 @@ def generate_answer(question: str, hits: list[dict]) -> str:
     if not hits:
         return "没有检索到可供回答问题的相关资料。"
 
+    require_opt_in("RAG_ALLOW_LLM_CONTEXT_TRANSFER", "向聊天模型发送检索片段")
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("根目录 .env 中没有配置 OPENAI_API_KEY")

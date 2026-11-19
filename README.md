@@ -34,6 +34,7 @@ rerank-rag/
 ├── .env.example           # 配置模板
 ├── .gitignore
 ├── .python-version
+├── docs/implementation-plan.md  # 企业版实施清单
 ├── pyproject.toml
 ├── uv.lock
 └── README.md
@@ -61,6 +62,12 @@ Copy-Item .env.example .env
 ```
 
 生成答案需要填写 `.env` 中的 `OPENAI_API_KEY`；使用兼容 OpenAI API 的服务时，可填写 `OPENAI_BASE_URL` 和 `OPENAI_CHAT_MODEL`。只查看检索结果时可以使用 `--retrieval-only`，此时不需要聊天模型 API Key。模型放在其他路径时，设置 `LOCAL_EMBED_MODEL_PATH`、`LOCAL_RERANK_MODEL_PATH`。
+
+### 数据外发开关
+
+默认禁止两类数据传输：`RAG_ALLOW_MINERU_UPLOAD=false` 禁止上传原始 PDF/PPT 到 MinerU，`RAG_ALLOW_LLM_CONTEXT_TRANSFER=false` 禁止把检索片段发送到聊天模型。首次解析未缓存的 PDF、需要 MinerU 备用解析的 PPT，或生成回答时，程序会提示设置对应开关。只有确认文档或片段可以交给该服务处理后，才在 `.env` 中把对应值改为 `true`。即使使用本地聊天模型，也需显式开启片段传输开关；仅检索不受影响。
+
+这些开关只阻止默认调用，**不提供脱敏、审批或权限控制**。当前项目不应直接处理真实企业机密文档。企业版增量见 [实施清单](docs/implementation-plan.md)。
 
 ## 支持的文档格式
 

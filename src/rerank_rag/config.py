@@ -46,3 +46,9 @@ RERANK_MODEL_PATH = Path(
 RERANK_CANDIDATE_K = 20
 RERANK_TOP_N = 5
 RERANK_BATCH_SIZE = 8
+
+
+def require_opt_in(variable: str, action: str) -> None:
+    """Require explicit configuration before sending document content elsewhere."""
+    if os.getenv(variable, "").strip().lower() != "true":
+        raise RuntimeError(f"{action}已关闭；如确认允许，请在 .env 中设置 {variable}=true")
