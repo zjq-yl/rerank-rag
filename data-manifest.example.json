@@ -1,0 +1,10 @@
+{
+  "documents": {
+    "example.md": {
+      "document_id": "example-001",
+      "owner": "知识库负责人",
+      "classification": "internal",
+      "approved": true
+    }
+  }
+}
